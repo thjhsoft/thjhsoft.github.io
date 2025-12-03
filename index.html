@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的App 主页</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Inter 字体 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* 防止星空滚动条 */
+        }
+        /* 确保 canvas 覆盖整个视口 */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1; /* 放在所有内容下面 */
+        }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen flex items-center justify-center">
+
+    <!-- 动态星空 Canvas 背景 -->
+    <canvas id="starfield"></canvas>
+
+    <!-- 主内容区域 -->
+    <div class="relative z-10 p-6 md:p-10 max-w-lg w-full text-center bg-gray-900/50 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-700/50">
+        
+        <!-- 标题 -->
+        <h1 class="text-5xl md:text-6xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight">
+            我的App
+        </h1>
+
+        <!-- 副标题/描述 -->
+        <p class="text-lg md:text-xl text-gray-300 mb-8 font-light">
+            探索无限可能。即刻在 Google Play 商店体验我们的所有应用。
+        </p>
+
+        <!-- Google Play 按钮 -->
+        <a href="https://play.google.com/store/apps/dev?id=9149607270061184838" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           class="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-full text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-800 transition duration-300 transform hover:scale-[1.02] shadow-lg shadow-green-600/50">
+            <!-- Google Play 商店图标 (Inline SVG) -->
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M11.603 3.996L3.999 7.749l7.604 3.753.003-7.506zm0 16.008l7.604-3.753-7.604-3.753v7.506zM1.996 9.492v5.016l4.004 2.008V7.484zM16.406 7.004l-4.802 2.378-4.802-2.378 4.802-2.378z"/>
+                <path d="M21.996 9.492v5.016l-4.004 2.008V7.484zM14.406 17.004l-4.802-2.378-4.802 2.378 4.802 2.378z"/>
+            </svg>
+            在 Google Play 上查看
+        </a>
+
+        <!-- 版权信息或额外链接 -->
+        <p class="mt-8 text-sm text-gray-500">
+            &copy; 2026 THJHSoftware. 保留所有权利。
+        </p>
+
+    </div>
+
+    <!-- JavaScript 动态星空效果 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('starfield');
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+            const STAR_COUNT = 500;
+            let vw = window.innerWidth;
+            let vh = window.innerHeight;
+
+            // 用于将 Base64 字符串转换为 ArrayBuffer (如果需要处理音频等，这里是冗余的，但保留作为通用工具)
+            function base64ToArrayBuffer(base64) {
+                const binaryString = window.atob(base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+
+            // 调整 canvas 尺寸以匹配视口
+            function resizeCanvas() {
+                vw = window.innerWidth;
+                vh = window.innerHeight;
+                canvas.width = vw;
+                canvas.height = vh;
+                
+                // 仅在首次或调整大小时重新初始化星星，以防星星位置异常
+                if (stars.length === 0 || window.isResizing) {
+                    stars = [];
+                    for (let i = 0; i < STAR_COUNT; i++) {
+                        stars.push(new Star());
+                    }
+                    window.isResizing = false;
+                }
+            }
+
+            // 星星类
+            class Star {
+                constructor() {
+                    this.x = Math.random() * vw;
+                    this.y = Math.random() * vh;
+                    this.radius = Math.random() * 1.5 + 0.5; // 0.5 to 2.0
+                    this.alpha = Math.random() * 0.8 + 0.2; // 0.2 to 1.0 initial brightness
+                    this.velocity = Math.random() * 0.08 + 0.02; // subtle vertical movement speed
+                    this.twinkleFactor = (Math.random() - 0.5) * 0.01; // subtle twinkle speed/direction
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                    ctx.fill();
+                }
+
+                update() {
+                    // 星星向上微妙移动
+                    this.y -= this.velocity;
+                    // 如果星星移出顶部，则将其重新放置到底部
+                    if (this.y < 0) {
+                        this.y = vh;
+                        this.x = Math.random() * vw; 
+                    }
+
+                    // 闪烁效果
+                    this.alpha += this.twinkleFactor;
+                    if (this.alpha > 1.0 || this.alpha < 0.2) {
+                        this.twinkleFactor *= -1; // 切换闪烁方向
+                        // 确保 alpha 保持在 [0.2, 1.0] 范围内
+                        this.alpha = Math.max(0.2, Math.min(1.0, this.alpha));
+                    }
+                }
+            }
+
+            // 动画循环
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // 清除画布。使用半透明黑色以创建轻微的拖尾效果 (motion blur)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(0, 0, vw, vh);
+
+                stars.forEach(star => {
+                    star.update();
+                    star.draw();
+                });
+            }
+
+            // 处理窗口大小调整
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                window.isResizing = true;
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(resizeCanvas, 250); // 延迟执行 resize 以优化性能
+            });
+
+            // 初始化
+            resizeCanvas();
+            animate();
+        });
+    </script>
+</body>
+</html>
